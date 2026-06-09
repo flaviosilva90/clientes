@@ -6,15 +6,23 @@ import {
   LayoutDashboard,
   Users,
   Receipt,
+  Wallet,
   LogOut,
   type LucideIcon,
 } from "lucide-react";
 
-const nav: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/clientes", label: "Clientes", icon: Users },
-  { href: "/mensalidades", label: "Mensalidades", icon: Receipt },
-];
+const nav: { href: string; label: string; short?: string; icon: LucideIcon }[] =
+  [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/clientes", label: "Clientes", icon: Users },
+    { href: "/mensalidades", label: "Mensalidades", icon: Receipt },
+    {
+      href: "/contas-receber",
+      label: "Contas a receber",
+      short: "Contas",
+      icon: Wallet,
+    },
+  ];
 
 function useIsActive() {
   const pathname = usePathname();
@@ -71,22 +79,22 @@ export function Sidebar({ email }: { email: string }) {
 
       {/* Barra inferior - mobile */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-slate-200 bg-white md:hidden">
-        {nav.map(({ href, label, icon: Icon }) => (
+        {nav.map(({ href, label, short, icon: Icon }) => (
           <Link
             key={href}
             href={href}
-            className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium transition ${
+            className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-center text-xs font-medium transition ${
               isActive(href) ? "text-indigo-600" : "text-slate-500"
             }`}
           >
             <Icon className="h-5 w-5" />
-            {label}
+            {short ?? label}
           </Link>
         ))}
         <form action="/auth/signout" method="post" className="flex flex-1">
           <button
             type="submit"
-            className="flex flex-1 flex-col items-center gap-1 py-2.5 text-xs font-medium text-slate-500"
+            className="flex flex-1 flex-col items-center gap-1 py-2.5 text-center text-xs font-medium text-slate-500"
           >
             <LogOut className="h-5 w-5" />
             Sair

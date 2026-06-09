@@ -25,8 +25,18 @@ function nomeDe(c: unknown): string {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const competencia = `${hojeISO().slice(0, 7)}-01`;
+  const hoje = hojeISO();
+  const mesAtual = hoje.slice(0, 7);
+  const competencia = `${mesAtual}-01`;
 
+  // Primeiro dia do próximo mês (para delimitar as parcelas do mês atual).
+  const [anoN, mesN] = mesAtual.split("-").map(Number);
+  const prox = new Date(anoN, mesN, 1);
+  const inicioProxMes = `${prox.getFullYear()}-${String(
+    prox.getMonth() + 1,
+  ).padStart(2, "0")}-01`;
+
+  // --- Clientes ativos / receita recorrente prevista ---
   const { data: clientesAtivos } = await supabase
     .from("clientes")
     .select("valor_mensalidade")
@@ -37,23 +47,47 @@ export default async function DashboardPage() {
     0,
   );
 
+  // --- Mensalidades do mês ---
   const { data: mensMes } = await supabase
     .from("mensalidades")
     .select("valor, status")
     .eq("competencia", competencia);
   const ativosMes = (mensMes ?? []).filter((m) => m.status !== "cancelado");
-  const recebidoMes = ativosMes
+  let recebidoMes = ativosMes
     .filter((m) => m.status === "pago")
     .reduce((s, m) => s + Number(m.valor), 0);
-  const emAbertoMes = ativosMes
+  let emAbertoMes = ativosMes
     .filter((m) => m.status !== "pago")
     .reduce((s, m) => s + Number(m.valor), 0);
 
+  // --- Parcelas (contas a receber) com vencimento no mês atual ---
+  const { data: parcMes } = await supabase
+    .from("parcelas")
+    .select("valor, status")
+    .gte("vencimento", competencia)
+    .lt("vencimento", inicioProxMes);
+  const parcAtivasMes = (parcMes ?? []).filter((p) => p.status !== "cancelado");
+  recebidoMes += parcAtivasMes
+    .filter((p) => p.status === "pago")
+    .reduce((s, p) => s + Number(p.valor), 0);
+  emAbertoMes += parcAtivasMes
+    .filter((p) => p.status !== "pago")
+    .reduce((s, p) => s + Number(p.valor), 0);
+
+  // --- Mensalidades em atraso ---
   const { data: atrasadas } = await supabase
     .from("mensalidades")
     .select("id, valor, vencimento, cliente:clientes(nome)")
     .eq("status", "pendente")
-    .lt("vencimento", hojeISO())
+    .lt("vencimento", hoje)
+    .order("vencimento")
+    .limit(8);
+
+  // --- Contas a receber em aberto (parcelas ainda não pagas) ---
+  const { data: parcelasAbertas } = await supabase
+    .from("parcelas")
+    .select("id, valor, vencimento, conta:contas_receber(descricao)")
+    .eq("status", "pendente")
     .order("vencimento")
     .limit(8);
 
@@ -120,49 +154,113 @@ export default async function DashboardPage() {
         })}
       </div>
 
-      <div className="mt-6 rounded-xl border border-slate-200 bg-white">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-red-500" />
-            <h2 className="font-semibold text-slate-900">
-              Pagamentos em atraso
-            </h2>
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Mensalidades em atraso */}
+        <div className="rounded-xl border border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+              <h2 className="font-semibold text-slate-900">
+                Mensalidades em atraso
+              </h2>
+            </div>
+            <Link
+              href="/mensalidades"
+              className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            >
+              Ver
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          <Link
-            href="/mensalidades"
-            className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700"
-          >
-            Ver mensalidades
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+
+          {!atrasadas || atrasadas.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-slate-500">
+              Nenhuma mensalidade em atraso. 🎉
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {atrasadas.map((m) => (
+                <li
+                  key={m.id}
+                  className="flex items-center justify-between px-5 py-3"
+                >
+                  <div>
+                    <p className="font-medium text-slate-900">
+                      {nomeDe(m.cliente)}
+                    </p>
+                    <p className="text-sm text-red-600">
+                      Venceu em {formatDate(m.vencimento)}
+                    </p>
+                  </div>
+                  <span className="font-semibold text-slate-900">
+                    {formatBRL(m.valor)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
-        {!atrasadas || atrasadas.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-slate-500">
-            Nenhum pagamento em atraso. 🎉
-          </p>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {atrasadas.map((m) => (
-              <li
-                key={m.id}
-                className="flex items-center justify-between px-5 py-3"
-              >
-                <div>
-                  <p className="font-medium text-slate-900">
-                    {nomeDe(m.cliente)}
-                  </p>
-                  <p className="text-sm text-red-600">
-                    Venceu em {formatDate(m.vencimento)}
-                  </p>
-                </div>
-                <span className="font-semibold text-slate-900">
-                  {formatBRL(m.valor)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        {/* Contas a receber em aberto */}
+        <div className="rounded-xl border border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 text-amber-500" />
+              <h2 className="font-semibold text-slate-900">
+                Contas a receber em aberto
+              </h2>
+            </div>
+            <Link
+              href="/contas-receber"
+              className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+            >
+              Ver
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          {!parcelasAbertas || parcelasAbertas.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-slate-500">
+              Nenhuma conta a receber em aberto. 🎉
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {parcelasAbertas.map((p) => {
+                const c = p.conta as unknown as
+                  | { descricao: string }
+                  | { descricao: string }[]
+                  | null;
+                const descricao = !c
+                  ? "—"
+                  : Array.isArray(c)
+                    ? (c[0]?.descricao ?? "—")
+                    : c.descricao;
+                const atrasada = p.vencimento < hoje;
+                return (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between px-5 py-3"
+                  >
+                    <div>
+                      <p className="font-medium text-slate-900">{descricao}</p>
+                      <p
+                        className={`text-sm ${
+                          atrasada ? "text-red-600" : "text-slate-500"
+                        }`}
+                      >
+                        {atrasada ? "Venceu" : "Vence"} em{" "}
+                        {formatDate(p.vencimento)}
+                      </p>
+                    </div>
+                    <span className="font-semibold text-slate-900">
+                      {formatBRL(p.valor)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
