@@ -11,6 +11,13 @@ function parseClienteForm(formData: FormData) {
     email: String(formData.get("email") ?? "").trim() || null,
     telefone: String(formData.get("telefone") ?? "").trim() || null,
     documento: String(formData.get("documento") ?? "").trim() || null,
+    cep: String(formData.get("cep") ?? "").trim() || null,
+    logradouro: String(formData.get("logradouro") ?? "").trim() || null,
+    numero: String(formData.get("numero") ?? "").trim() || null,
+    complemento: String(formData.get("complemento") ?? "").trim() || null,
+    bairro: String(formData.get("bairro") ?? "").trim() || null,
+    cidade: String(formData.get("cidade") ?? "").trim() || null,
+    uf: String(formData.get("uf") ?? "").trim().toUpperCase() || null,
     valor_mensalidade: Number(formData.get("valor_mensalidade") ?? 0) || 0,
     dia_vencimento: Number(formData.get("dia_vencimento") ?? 10) || 10,
     data_inicio:

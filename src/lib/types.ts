@@ -5,6 +5,13 @@ export type Cliente = {
   email: string | null;
   telefone: string | null;
   documento: string | null;
+  cep: string | null;
+  logradouro: string | null;
+  numero: string | null;
+  complemento: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  uf: string | null;
   valor_mensalidade: number;
   dia_vencimento: number;
   data_inicio: string;

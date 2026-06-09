@@ -55,6 +55,11 @@ export default async function ClientesPage() {
                     {c.documento && (
                       <div className="text-xs text-slate-500">{c.documento}</div>
                     )}
+                    {[c.cidade, c.uf].filter(Boolean).length > 0 && (
+                      <div className="text-xs text-slate-400">
+                        {[c.cidade, c.uf].filter(Boolean).join(" / ")}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     <div>{c.email ?? "—"}</div>
@@ -111,6 +116,11 @@ export default async function ClientesPage() {
                     {formatBRL(c.valor_mensalidade)} · vence dia{" "}
                     {c.dia_vencimento}
                   </div>
+                  {[c.cidade, c.uf].filter(Boolean).length > 0 && (
+                    <div className="truncate text-xs text-slate-400">
+                      {[c.cidade, c.uf].filter(Boolean).join(" / ")}
+                    </div>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <ClienteDialog cliente={c} />

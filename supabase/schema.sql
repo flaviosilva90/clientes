@@ -13,6 +13,13 @@ create table if not exists public.clientes (
   email             text,
   telefone          text,
   documento         text,                              -- CPF/CNPJ (opcional)
+  cep               text,
+  logradouro        text,
+  numero            text,
+  complemento       text,
+  bairro            text,
+  cidade            text,
+  uf                text,
   valor_mensalidade numeric(10, 2) not null default 0,
   dia_vencimento    int not null default 10 check (dia_vencimento between 1 and 31),
   data_inicio       date not null default current_date,
@@ -20,6 +27,15 @@ create table if not exists public.clientes (
   observacoes       text,
   created_at        timestamptz not null default now()
 );
+
+-- Campos de endereço — rode caso a tabela "clientes" já exista sem eles.
+alter table public.clientes add column if not exists cep         text;
+alter table public.clientes add column if not exists logradouro  text;
+alter table public.clientes add column if not exists numero      text;
+alter table public.clientes add column if not exists complemento text;
+alter table public.clientes add column if not exists bairro      text;
+alter table public.clientes add column if not exists cidade      text;
+alter table public.clientes add column if not exists uf          text;
 
 -- ----------------------------------------------------------------
 -- Tabela: mensalidades
